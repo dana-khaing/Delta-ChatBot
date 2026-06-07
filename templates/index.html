@@ -26,7 +26,7 @@
             <p class="section-label">Choose a persona</p>
             <button class="persona active" data-persona="guide" type="button">
               <span class="persona-icon">D</span>
-              <span><strong>Helpful Guide</strong><small>Clear, practical answers</small></span>
+              <span><strong>Class Clown</strong><small>Helpful answers, extra mischief</small></span>
             </button>
             <button class="persona" data-persona="python" type="button">
               <span class="persona-icon">&lt;/&gt;</span>
@@ -45,7 +45,7 @@
         <header class="topbar">
           <button class="menu-button" id="menu-button" type="button" aria-label="Open menu">☰</button>
           <div>
-            <strong id="active-persona">Helpful Guide</strong>
+            <strong id="active-persona">Class Clown</strong>
             <span class="status"><i></i> Ready with {{ model }}</span>
           </div>
           <button class="clear-button" id="clear-button" type="button">Clear chat</button>
@@ -83,4 +83,3 @@
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </body>
 </html>
-

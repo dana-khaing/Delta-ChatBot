@@ -56,6 +56,8 @@ def test_chat_returns_gemini_reply(client):
     assert response.status_code == 200
     assert response.json == {"reply": "Hello from Gemini"}
     mock_client.models.generate_content.assert_called_once()
+    config = mock_client.models.generate_content.call_args.kwargs["config"]
+    assert "class-clown-style assistant" in config.system_instruction
 
 
 def test_chat_reports_missing_api_key():
