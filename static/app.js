@@ -150,16 +150,33 @@ async function sendMessage(text) {
   const typing = addTyping();
 
   try {
-    const response = await fetch("/api/chat", {
+    const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, persona, history }),
     });
-    const data = await response.json();
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "The request failed.");
+    }
+
     typing.remove();
-    if (!response.ok) throw new Error(data.error || "The request failed.");
-    addMessage("model", data.reply);
-    history.push({ role: "user", text: message }, { role: "model", text: data.reply });
+    const replyRow = addMessage("model", "");
+    const replyBubble = replyRow.querySelector(".message-bubble");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let reply = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      reply += decoder.decode(value, { stream: true });
+      replyBubble.innerHTML = renderMarkdown(reply);
+      replyRow.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+
+    if (!reply.trim()) throw new Error("Gemini returned an empty response.");
+    history.push({ role: "user", text: message }, { role: "model", text: reply });
     saveState();
   } catch (error) {
     typing.remove();
