@@ -1,0 +1,59 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from app import create_app
+
+
+@pytest.fixture()
+def client():
+    app = create_app({"TESTING": True, "GEMINI_API_KEY": "test-key"})
+    return app.test_client()
+
+
+def test_home_page(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"Delta Chat" in response.data
+
+
+def test_chat_requires_message(client):
+    response = client.post("/api/chat", json={"message": "  "})
+    assert response.status_code == 400
+    assert response.json["error"] == "Please enter a message."
+
+
+def test_chat_rejects_unknown_persona(client):
+    response = client.post(
+        "/api/chat", json={"message": "Hello", "persona": "villain"}
+    )
+    assert response.status_code == 400
+
+
+def test_chat_returns_gemini_reply(client):
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = SimpleNamespace(
+        text="Hello from Gemini"
+    )
+
+    with patch("app.genai.Client", return_value=mock_client):
+        response = client.post(
+            "/api/chat",
+            json={
+                "message": "Hello",
+                "persona": "guide",
+                "history": [{"role": "user", "text": "Earlier question"}],
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json == {"reply": "Hello from Gemini"}
+    mock_client.models.generate_content.assert_called_once()
+
+
+def test_chat_reports_missing_api_key():
+    app = create_app({"TESTING": True, "GEMINI_API_KEY": ""})
+    response = app.test_client().post("/api/chat", json={"message": "Hello"})
+    assert response.status_code == 503
+
