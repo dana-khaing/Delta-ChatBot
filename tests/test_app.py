@@ -50,6 +50,7 @@ def test_chat_returns_gemini_reply(client):
             json={
                 "message": "Hello",
                 "persona": "guide",
+                "humor": "maximum",
                 "history": [{"role": "user", "text": "Earlier question"}],
             },
         )
@@ -59,12 +60,21 @@ def test_chat_returns_gemini_reply(client):
     mock_client.models.generate_content.assert_called_once()
     config = mock_client.models.generate_content.call_args.kwargs["config"]
     assert "class-clown-style assistant" in config.system_instruction
+    assert "Turn the class-clown energy up high" in config.system_instruction
 
 
 def test_chat_reports_missing_api_key():
     app = create_app({"TESTING": True, "GEMINI_API_KEY": ""})
     response = app.test_client().post("/api/chat", json={"message": "Hello"})
     assert response.status_code == 503
+
+
+def test_chat_rejects_unknown_humor_level(client):
+    response = client.post(
+        "/api/chat", json={"message": "Hello", "humor": "chaos"}
+    )
+    assert response.status_code == 400
+    assert response.json["error"] == "Unknown humor level."
 
 
 def test_chat_stream_returns_incremental_reply(client):

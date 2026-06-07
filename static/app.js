@@ -6,9 +6,11 @@ const sendButton = document.querySelector("#send-button");
 const activePersona = document.querySelector("#active-persona");
 const sidebar = document.querySelector("#sidebar");
 const scrim = document.querySelector("#scrim");
+const humorSelect = document.querySelector("#humor-level");
 const STORAGE_KEY = "delta-chat-state-v1";
 
 let persona = "guide";
+let humor = "funny";
 let history = [];
 
 const personaNames = {
@@ -18,7 +20,7 @@ const personaNames = {
 };
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ persona, history }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ persona, humor, history }));
 }
 
 function restoreState() {
@@ -26,6 +28,7 @@ function restoreState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved || !Array.isArray(saved.history) || !personaNames[saved.persona]) return;
     persona = saved.persona;
+    humor = ["serious", "funny", "maximum"].includes(saved.humor) ? saved.humor : "funny";
     history = saved.history.filter((item) => item && ["user", "model"].includes(item.role) && typeof item.text === "string");
   } catch {
     localStorage.removeItem(STORAGE_KEY);
@@ -153,7 +156,7 @@ async function sendMessage(text) {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, persona, history }),
+      body: JSON.stringify({ message, persona, humor, history }),
     });
     if (!response.ok) {
       const data = await response.json();
@@ -231,8 +234,13 @@ scrim.addEventListener("click", () => {
   sidebar.classList.remove("open");
   scrim.classList.remove("show");
 });
+humorSelect.addEventListener("change", () => {
+  humor = humorSelect.value;
+  saveState();
+});
 
 restoreState();
+humorSelect.value = humor;
 document.querySelectorAll("[data-persona]").forEach((button) => {
   button.classList.toggle("active", button.dataset.persona === persona);
 });
