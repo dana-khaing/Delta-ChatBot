@@ -7,11 +7,15 @@ const activePersona = document.querySelector("#active-persona");
 const sidebar = document.querySelector("#sidebar");
 const scrim = document.querySelector("#scrim");
 const humorSelect = document.querySelector("#humor-level");
-const STORAGE_KEY = "delta-chat-state-v1";
+const conversationList = document.querySelector("#conversation-list");
+const STORAGE_KEY = "delta-chat-conversations-v2";
+const LEGACY_STORAGE_KEY = "delta-chat-state-v1";
 
 let persona = "guide";
 let humor = "funny";
 let history = [];
+let conversations = [];
+let activeConversationId = null;
 
 const personaNames = {
   guide: "Class Clown",
@@ -19,20 +23,72 @@ const personaNames = {
   creative: "Creative Partner",
 };
 
+function conversationId() {
+  return globalThis.crypto?.randomUUID?.() || `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function newConversation() {
+  return {
+    id: conversationId(),
+    title: "New conversation",
+    persona: "guide",
+    humor: "funny",
+    history: [],
+    updatedAt: Date.now(),
+  };
+}
+
+function syncActiveConversation() {
+  const active = conversations.find((item) => item.id === activeConversationId);
+  if (!active) return;
+  active.persona = persona;
+  active.humor = humor;
+  active.history = history;
+  active.updatedAt = Date.now();
+  if (active.title === "New conversation" && history.length) {
+    const firstUserMessage = history.find((item) => item.role === "user");
+    if (firstUserMessage) active.title = firstUserMessage.text.slice(0, 34);
+  }
+}
+
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ persona, humor, history }));
+  syncActiveConversation();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeConversationId, conversations }));
+  renderConversationList();
 }
 
 function restoreState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!saved || !Array.isArray(saved.history) || !personaNames[saved.persona]) return;
-    persona = saved.persona;
-    humor = ["serious", "funny", "maximum"].includes(saved.humor) ? saved.humor : "funny";
-    history = saved.history.filter((item) => item && ["user", "model"].includes(item.role) && typeof item.text === "string");
+    if (saved && Array.isArray(saved.conversations) && saved.conversations.length) {
+      conversations = saved.conversations;
+      activeConversationId = saved.activeConversationId;
+    } else {
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+      const conversation = newConversation();
+      if (legacy && Array.isArray(legacy.history)) {
+        conversation.persona = personaNames[legacy.persona] ? legacy.persona : "guide";
+        conversation.humor = ["serious", "funny", "maximum"].includes(legacy.humor) ? legacy.humor : "funny";
+        conversation.history = legacy.history;
+      }
+      conversations = [conversation];
+      activeConversationId = conversation.id;
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
   } catch {
     localStorage.removeItem(STORAGE_KEY);
+    conversations = [];
   }
+
+  if (!conversations.some((item) => item.id === activeConversationId)) {
+    activeConversationId = conversations[0]?.id;
+  }
+  if (!activeConversationId) {
+    const conversation = newConversation();
+    conversations = [conversation];
+    activeConversationId = conversation.id;
+  }
+  loadConversation(activeConversationId, false);
 }
 
 function escapeHtml(value) {
@@ -132,11 +188,86 @@ function addTyping() {
   return row;
 }
 
+function renderMessages() {
+  messages.replaceChildren();
+  welcome.hidden = !history.length;
+  history.forEach((item) => addMessage(item.role, item.text));
+}
+
+function loadConversation(id, shouldSave = true) {
+  if (shouldSave) syncActiveConversation();
+  const selected = conversations.find((item) => item.id === id);
+  if (!selected) return;
+  activeConversationId = selected.id;
+  persona = personaNames[selected.persona] ? selected.persona : "guide";
+  humor = ["serious", "funny", "maximum"].includes(selected.humor) ? selected.humor : "funny";
+  history = Array.isArray(selected.history) ? selected.history : [];
+  document.querySelectorAll("[data-persona]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.persona === persona);
+  });
+  activePersona.textContent = personaNames[persona];
+  humorSelect.value = humor;
+  renderMessages();
+  if (shouldSave) saveState();
+}
+
+function renderConversationList() {
+  conversationList.replaceChildren();
+  [...conversations]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .forEach((conversation) => {
+      const row = document.createElement("div");
+      row.className = `saved-conversation ${conversation.id === activeConversationId ? "active" : ""}`;
+      const openButton = document.createElement("button");
+      openButton.type = "button";
+      openButton.className = "conversation-open";
+      openButton.textContent = conversation.title || "New conversation";
+      openButton.addEventListener("click", () => loadConversation(conversation.id));
+
+      const actions = document.createElement("div");
+      actions.className = "conversation-actions";
+      const renameButton = document.createElement("button");
+      renameButton.type = "button";
+      renameButton.title = "Rename conversation";
+      renameButton.textContent = "✎";
+      renameButton.addEventListener("click", () => {
+        const title = prompt("Rename conversation", conversation.title);
+        if (title?.trim()) {
+          conversation.title = title.trim().slice(0, 50);
+          saveState();
+        }
+      });
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.title = "Delete conversation";
+      deleteButton.textContent = "×";
+      deleteButton.addEventListener("click", () => {
+        conversations = conversations.filter((item) => item.id !== conversation.id);
+        if (!conversations.length) conversations.push(newConversation());
+        if (activeConversationId === conversation.id) loadConversation(conversations[0].id, false);
+        saveState();
+      });
+      actions.append(renameButton, deleteButton);
+      row.append(openButton, actions);
+      conversationList.appendChild(row);
+    });
+}
+
 function resetChat() {
   history = [];
-  localStorage.removeItem(STORAGE_KEY);
-  messages.replaceChildren();
-  welcome.hidden = false;
+  const active = conversations.find((item) => item.id === activeConversationId);
+  if (active) active.title = "New conversation";
+  renderMessages();
+  saveState();
+  input.value = "";
+  input.focus();
+}
+
+function startNewConversation() {
+  syncActiveConversation();
+  const conversation = newConversation();
+  conversations.push(conversation);
+  loadConversation(conversation.id);
   input.value = "";
   input.focus();
 }
@@ -217,14 +348,13 @@ document.querySelectorAll("[data-persona]").forEach((button) => {
     document.querySelector(".persona.active").classList.remove("active");
     button.classList.add("active");
     activePersona.textContent = personaNames[persona];
-    resetChat();
     saveState();
     sidebar.classList.remove("open");
     scrim.classList.remove("show");
   });
 });
 
-document.querySelector("#new-chat").addEventListener("click", resetChat);
+document.querySelector("#new-chat").addEventListener("click", startNewConversation);
 document.querySelector("#clear-button").addEventListener("click", resetChat);
 document.querySelector("#menu-button").addEventListener("click", () => {
   sidebar.classList.add("open");
@@ -240,12 +370,4 @@ humorSelect.addEventListener("change", () => {
 });
 
 restoreState();
-humorSelect.value = humor;
-document.querySelectorAll("[data-persona]").forEach((button) => {
-  button.classList.toggle("active", button.dataset.persona === persona);
-});
-activePersona.textContent = personaNames[persona];
-if (history.length) {
-  welcome.hidden = true;
-  history.forEach((item) => addMessage(item.role, item.text));
-}
+saveState();
