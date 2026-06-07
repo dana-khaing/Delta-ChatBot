@@ -158,11 +158,17 @@ h1 { margin: 0; font-family: Manrope, sans-serif; font-size: clamp(27px, 3vw, 40
 @keyframes pulse { to { opacity: .25; transform: translateY(-2px); } }
 
 .composer { position: relative; width: min(820px, calc(100% - 40px)); margin: 0 auto 22px; }
-.composer textarea { display: block; width: 100%; min-height: 58px; max-height: 180px; resize: none; padding: 18px 60px 18px 18px; border: 1px solid #dfe1e9; border-radius: 16px; outline: none; color: var(--ink); background: var(--surface); box-shadow: 0 8px 28px rgba(24,28,44,.08); }
+.composer textarea { display: block; width: 100%; min-height: 58px; max-height: 180px; resize: none; padding: 18px 60px 18px 54px; border: 1px solid #dfe1e9; border-radius: 16px; outline: none; color: var(--ink); background: var(--surface); box-shadow: 0 8px 28px rgba(24,28,44,.08); }
 .composer textarea:focus { border-color: #afa5f2; box-shadow: 0 8px 28px rgba(84,70,190,.12); }
+.attach-button { position: absolute; top: 11px; left: 11px; z-index: 1; width: 36px; height: 36px; border: 0; border-radius: 11px; color: var(--accent); background: var(--accent-soft); font-size: 20px; }
+.attachment-preview { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 8px 7px; }
+.attachment-preview:empty { display: none; }
+.attachment-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 5px 6px 5px 9px; border: 1px solid #d8d4f5; border-radius: 8px; overflow: hidden; color: #50469b; background: var(--accent-soft); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-chip button { flex: 0 0 auto; width: 18px; height: 18px; border: 0; border-radius: 4px; color: #7166bd; background: transparent; }
 .send-button { position: absolute; top: 11px; right: 11px; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 11px; color: #fff; background: var(--accent); font-size: 20px; }
 .stop-button { position: absolute; top: 11px; right: 11px; z-index: 1; width: 36px; height: 36px; border: 0; border-radius: 11px; color: #fff; background: #34384a; font-size: 11px; }
 .send-button:disabled { opacity: .45; cursor: wait; }
+.send-button:disabled ~ .attach-button, .send-button:disabled { cursor: wait; }
 .composer-hint { display: block; margin-top: 8px; color: #979aa8; font-size: 10px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 .scrim { display: none; }

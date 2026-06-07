@@ -4,6 +4,9 @@ const messages = document.querySelector("#messages");
 const welcome = document.querySelector("#welcome");
 const sendButton = document.querySelector("#send-button");
 const stopButton = document.querySelector("#stop-button");
+const attachButton = document.querySelector("#attach-button");
+const fileInput = document.querySelector("#file-input");
+const attachmentPreview = document.querySelector("#attachment-preview");
 const activePersona = document.querySelector("#active-persona");
 const sidebar = document.querySelector("#sidebar");
 const scrim = document.querySelector("#scrim");
@@ -18,6 +21,7 @@ let history = [];
 let conversations = [];
 let activeConversationId = null;
 let activeController = null;
+let attachments = [];
 
 const personaNames = {
   guide: "Class Clown",
@@ -284,6 +288,7 @@ function resetChat() {
   renderMessages();
   saveState();
   input.value = "";
+  clearAttachments();
   input.focus();
 }
 
@@ -293,17 +298,60 @@ function startNewConversation() {
   conversations.push(conversation);
   loadConversation(conversation.id);
   input.value = "";
+  clearAttachments();
   input.focus();
 }
 
+function renderAttachments() {
+  attachmentPreview.replaceChildren();
+  attachments.forEach((attachment, index) => {
+    const chip = document.createElement("span");
+    chip.className = "attachment-chip";
+    chip.textContent = attachment.name;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      attachments.splice(index, 1);
+      renderAttachments();
+    });
+    chip.appendChild(remove);
+    attachmentPreview.appendChild(chip);
+  });
+}
+
+function clearAttachments() {
+  attachments = [];
+  fileInput.value = "";
+  renderAttachments();
+}
+
+function filePayload(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      name: file.name,
+      mime_type: file.type || (file.name.endsWith(".md") ? "text/markdown" : "text/plain"),
+      data: String(reader.result).split(",")[1],
+    });
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function sendMessage(text, options = {}) {
-  const message = text.trim();
+  const pendingAttachments = [...attachments];
+  const message = text.trim() || (pendingAttachments.length ? "Analyze the attached files." : "");
   if (!message || sendButton.disabled) return;
 
   welcome.hidden = true;
-  if (options.renderUser !== false) addMessage("user", message);
+  const displayMessage = pendingAttachments.length
+    ? `${message}\n\nAttached: ${pendingAttachments.map((item) => item.name).join(", ")}`
+    : message;
+  if (options.renderUser !== false) addMessage("user", displayMessage);
   input.value = "";
   input.style.height = "auto";
+  clearAttachments();
   sendButton.disabled = true;
   stopButton.hidden = false;
   activeController = new AbortController();
@@ -315,7 +363,7 @@ async function sendMessage(text, options = {}) {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, persona, humor, history }),
+      body: JSON.stringify({ message, persona, humor, history, attachments: pendingAttachments }),
       signal: activeController.signal,
     });
     if (!response.ok) {
@@ -338,14 +386,14 @@ async function sendMessage(text, options = {}) {
     }
 
     if (!reply.trim()) throw new Error("Gemini returned an empty response.");
-    history.push({ role: "user", text: message }, { role: "model", text: reply });
+    history.push({ role: "user", text: displayMessage }, { role: "model", text: reply });
     saveState();
     renderMessages();
   } catch (error) {
     typing.remove();
     if (error.name === "AbortError") {
       if (reply.trim()) {
-        history.push({ role: "user", text: message }, { role: "model", text: reply });
+        history.push({ role: "user", text: displayMessage }, { role: "model", text: reply });
         saveState();
         renderMessages();
       } else {
@@ -379,6 +427,18 @@ form.addEventListener("submit", (event) => {
   sendMessage(input.value);
 });
 stopButton.addEventListener("click", () => activeController?.abort());
+attachButton.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", async () => {
+  const files = [...fileInput.files].slice(0, 2);
+  const oversized = files.find((file) => file.size > 5 * 1024 * 1024);
+  if (oversized) {
+    addMessage("model", `${oversized.name} is larger than 5 MB.`, "error");
+    fileInput.value = "";
+    return;
+  }
+  attachments = await Promise.all(files.map(filePayload));
+  renderAttachments();
+});
 
 input.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
