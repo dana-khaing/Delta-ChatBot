@@ -11,7 +11,7 @@ let persona = "guide";
 let history = [];
 
 const personaNames = {
-  guide: "Helpful Guide",
+  guide: "Class Clown",
   python: "Python Tutor",
   creative: "Creative Partner",
 };
@@ -119,4 +119,3 @@ scrim.addEventListener("click", () => {
   sidebar.classList.remove("open");
   scrim.classList.remove("show");
 });
-
