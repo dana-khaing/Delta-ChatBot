@@ -48,7 +48,17 @@
             <strong id="active-persona">Class Clown</strong>
             <span class="status"><i></i> Ready with {{ model }}</span>
           </div>
-          <button class="clear-button" id="clear-button" type="button">Clear chat</button>
+          <div class="topbar-actions">
+            <label class="humor-control">
+              <span>Humor</span>
+              <select id="humor-level">
+                <option value="serious">Serious</option>
+                <option value="funny" selected>Funny</option>
+                <option value="maximum">Maximum Clown</option>
+              </select>
+            </label>
+            <button class="clear-button" id="clear-button" type="button">Clear chat</button>
+          </div>
         </header>
 
         <section class="conversation" id="conversation" aria-live="polite">

@@ -106,6 +106,9 @@ button { cursor: pointer; }
 .topbar strong { font-size: 14px; }
 .status { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .status i { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #44ad77; }
+.topbar-actions, .humor-control { display: flex; align-items: center; gap: 12px; }
+.humor-control span { color: var(--muted); font-size: 11px; font-weight: 600; }
+.humor-control select { padding: 7px 28px 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: #4d5060; background: var(--surface); font-size: 11px; font-weight: 600; }
 .clear-button, .menu-button { border: 0; color: var(--muted); background: transparent; font-size: 12px; font-weight: 600; }
 .menu-button { display: none; font-size: 20px; }
 
@@ -159,6 +162,8 @@ h1 { margin: 0; font-family: Manrope, sans-serif; font-size: clamp(27px, 3vw, 40
   .topbar { padding: 10px 16px; }
   .menu-button { display: block; }
   .clear-button { display: none; }
+  .humor-control span { display: none; }
+  .humor-control select { max-width: 130px; }
   .conversation { padding: 22px 16px 10px; }
   .welcome { width: 100%; max-width: 100%; margin-top: 8vh; }
   .welcome h1 { font-size: 27px; line-height: 1.18; overflow-wrap: anywhere; }

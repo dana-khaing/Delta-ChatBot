@@ -29,6 +29,19 @@ PERSONAS = {
     ),
 }
 
+HUMOR_LEVELS = {
+    "serious": "Use no jokes. Be direct, calm, and professional.",
+    "funny": "Use occasional playful jokes while keeping the answer clear and useful.",
+    "maximum": (
+        "Turn the class-clown energy up high with frequent clever jokes, playful "
+        "analogies, and dramatic phrasing, but never sacrifice accuracy or kindness."
+    ),
+}
+
+
+def system_instruction(persona: str, humor: str) -> str:
+    return f"{PERSONAS[persona]} Humor setting: {HUMOR_LEVELS[humor]}"
+
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
@@ -54,12 +67,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         payload = request.get_json(silent=True) or {}
         message = str(payload.get("message", "")).strip()
         persona = str(payload.get("persona", "guide"))
+        humor = str(payload.get("humor", "funny"))
         raw_history = payload.get("history", [])
 
         if not message:
             return jsonify({"error": "Please enter a message."}), 400
         if persona not in PERSONAS:
             return jsonify({"error": "Unknown assistant persona."}), 400
+        if humor not in HUMOR_LEVELS:
+            return jsonify({"error": "Unknown humor level."}), 400
         if not isinstance(raw_history, list):
             return jsonify({"error": "Conversation history must be a list."}), 400
         if not app.config["GEMINI_API_KEY"]:
@@ -88,7 +104,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 model=app.config["GEMINI_MODEL"],
                 contents=history,
                 config=types.GenerateContentConfig(
-                    system_instruction=PERSONAS[persona],
+                    system_instruction=system_instruction(persona, humor),
                     temperature=0.7,
                 ),
             )
@@ -105,12 +121,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         payload = request.get_json(silent=True) or {}
         message = str(payload.get("message", "")).strip()
         persona = str(payload.get("persona", "guide"))
+        humor = str(payload.get("humor", "funny"))
         raw_history = payload.get("history", [])
 
         if not message:
             return jsonify({"error": "Please enter a message."}), 400
         if persona not in PERSONAS:
             return jsonify({"error": "Unknown assistant persona."}), 400
+        if humor not in HUMOR_LEVELS:
+            return jsonify({"error": "Unknown humor level."}), 400
         if not isinstance(raw_history, list):
             return jsonify({"error": "Conversation history must be a list."}), 400
         if not app.config["GEMINI_API_KEY"]:
@@ -138,7 +157,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 model=app.config["GEMINI_MODEL"],
                 contents=history,
                 config=types.GenerateContentConfig(
-                    system_instruction=PERSONAS[persona],
+                    system_instruction=system_instruction(persona, humor),
                     temperature=0.7,
                 ),
             )
