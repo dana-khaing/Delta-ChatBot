@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 from typing import Any
 
@@ -38,9 +40,41 @@ HUMOR_LEVELS = {
     ),
 }
 
+ALLOWED_ATTACHMENT_TYPES = {
+    "application/pdf",
+    "text/markdown",
+    "text/plain",
+}
+MAX_ATTACHMENTS = 2
+MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+
 
 def system_instruction(persona: str, humor: str) -> str:
     return f"{PERSONAS[persona]} Humor setting: {HUMOR_LEVELS[humor]}"
+
+
+def attachment_parts(raw_attachments: Any) -> list[types.Part]:
+    if raw_attachments is None:
+        return []
+    if not isinstance(raw_attachments, list) or len(raw_attachments) > MAX_ATTACHMENTS:
+        raise ValueError(f"Attach up to {MAX_ATTACHMENTS} files.")
+
+    parts = []
+    for attachment in raw_attachments:
+        if not isinstance(attachment, dict):
+            raise ValueError("Invalid attachment.")
+        mime_type = str(attachment.get("mime_type", ""))
+        encoded = str(attachment.get("data", ""))
+        if not (mime_type.startswith("image/") or mime_type in ALLOWED_ATTACHMENT_TYPES):
+            raise ValueError("Unsupported attachment type.")
+        try:
+            data = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("Invalid attachment data.") from exc
+        if not data or len(data) > MAX_ATTACHMENT_BYTES:
+            raise ValueError("Each attachment must be 5 MB or smaller.")
+        parts.append(types.Part.from_bytes(data=data, mime_type=mime_type))
+    return parts
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -69,8 +103,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         persona = str(payload.get("persona", "guide"))
         humor = str(payload.get("humor", "funny"))
         raw_history = payload.get("history", [])
+        raw_attachments = payload.get("attachments", [])
 
-        if not message:
+        if not message and not raw_attachments:
             return jsonify({"error": "Please enter a message."}), 400
         if persona not in PERSONAS:
             return jsonify({"error": "Unknown assistant persona."}), 400
@@ -82,6 +117,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify(
                 {"error": "GEMINI_API_KEY is not configured on the server."}
             ), 503
+        try:
+            files = attachment_parts(raw_attachments)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
 
         history = []
         for item in raw_history[-app.config["MAX_HISTORY_MESSAGES"] :]:
@@ -94,9 +133,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     types.Content(role=role, parts=[types.Part.from_text(text=text)])
                 )
 
-        history.append(
-            types.Content(role="user", parts=[types.Part.from_text(text=message)])
-        )
+        user_parts = [types.Part.from_text(text=message or "Analyze the attached files.")]
+        history.append(types.Content(role="user", parts=user_parts + files))
 
         try:
             client = genai.Client(api_key=app.config["GEMINI_API_KEY"])
@@ -123,8 +161,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         persona = str(payload.get("persona", "guide"))
         humor = str(payload.get("humor", "funny"))
         raw_history = payload.get("history", [])
+        raw_attachments = payload.get("attachments", [])
 
-        if not message:
+        if not message and not raw_attachments:
             return jsonify({"error": "Please enter a message."}), 400
         if persona not in PERSONAS:
             return jsonify({"error": "Unknown assistant persona."}), 400
@@ -136,6 +175,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify(
                 {"error": "GEMINI_API_KEY is not configured on the server."}
             ), 503
+        try:
+            files = attachment_parts(raw_attachments)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
 
         history = []
         for item in raw_history[-app.config["MAX_HISTORY_MESSAGES"] :]:
@@ -147,9 +190,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 history.append(
                     types.Content(role=role, parts=[types.Part.from_text(text=text)])
                 )
-        history.append(
-            types.Content(role="user", parts=[types.Part.from_text(text=message)])
-        )
+        user_parts = [types.Part.from_text(text=message or "Analyze the attached files.")]
+        history.append(types.Content(role="user", parts=user_parts + files))
 
         try:
             client = genai.Client(api_key=app.config["GEMINI_API_KEY"])
