@@ -18,6 +18,12 @@ def test_home_page(client):
     assert b"Delta Chat" in response.data
 
 
+def test_health_check(client):
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    assert response.json == {"status": "ok", "service": "delta-chat"}
+
+
 def test_chat_requires_message(client):
     response = client.post("/api/chat", json={"message": "  "})
     assert response.status_code == 400
@@ -56,4 +62,3 @@ def test_chat_reports_missing_api_key():
     app = create_app({"TESTING": True, "GEMINI_API_KEY": ""})
     response = app.test_client().post("/api/chat", json={"message": "Hello"})
     assert response.status_code == 503
-
