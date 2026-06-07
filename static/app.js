@@ -3,6 +3,7 @@ const input = document.querySelector("#message-input");
 const messages = document.querySelector("#messages");
 const welcome = document.querySelector("#welcome");
 const sendButton = document.querySelector("#send-button");
+const stopButton = document.querySelector("#stop-button");
 const activePersona = document.querySelector("#active-persona");
 const sidebar = document.querySelector("#sidebar");
 const scrim = document.querySelector("#scrim");
@@ -16,6 +17,7 @@ let humor = "funny";
 let history = [];
 let conversations = [];
 let activeConversationId = null;
+let activeController = null;
 
 const personaNames = {
   guide: "Class Clown",
@@ -162,7 +164,26 @@ function renderMarkdown(value) {
   return output.join("").replace(/%%CODEBLOCK(\d+)%%/g, (_, index) => codeBlocks[Number(index)]);
 }
 
-function addMessage(role, text, extraClass = "") {
+function messageActions(text, messageIndex) {
+  const actions = document.createElement("div");
+  actions.className = "message-actions";
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.textContent = "Copy";
+  copyButton.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(text);
+    copyButton.textContent = "Copied";
+    setTimeout(() => { copyButton.textContent = "Copy"; }, 1200);
+  });
+  const regenerateButton = document.createElement("button");
+  regenerateButton.type = "button";
+  regenerateButton.textContent = "Regenerate";
+  regenerateButton.addEventListener("click", () => regenerateResponse(messageIndex));
+  actions.append(copyButton, regenerateButton);
+  return actions;
+}
+
+function addMessage(role, text, extraClass = "", messageIndex = null) {
   const row = document.createElement("div");
   row.className = `message ${role} ${extraClass}`.trim();
   const bubble = document.createElement("div");
@@ -174,6 +195,9 @@ function addMessage(role, text, extraClass = "") {
     bubble.textContent = text;
   }
   row.appendChild(bubble);
+  if (role === "model" && extraClass !== "error" && messageIndex !== null) {
+    row.appendChild(messageActions(text, messageIndex));
+  }
   messages.appendChild(row);
   row.scrollIntoView({ behavior: "smooth", block: "end" });
   return row;
@@ -191,7 +215,7 @@ function addTyping() {
 function renderMessages() {
   messages.replaceChildren();
   welcome.hidden = !history.length;
-  history.forEach((item) => addMessage(item.role, item.text));
+  history.forEach((item, index) => addMessage(item.role, item.text, "", index));
 }
 
 function loadConversation(id, shouldSave = true) {
@@ -272,22 +296,27 @@ function startNewConversation() {
   input.focus();
 }
 
-async function sendMessage(text) {
+async function sendMessage(text, options = {}) {
   const message = text.trim();
   if (!message || sendButton.disabled) return;
 
   welcome.hidden = true;
-  addMessage("user", message);
+  if (options.renderUser !== false) addMessage("user", message);
   input.value = "";
   input.style.height = "auto";
   sendButton.disabled = true;
+  stopButton.hidden = false;
+  activeController = new AbortController();
   const typing = addTyping();
+  let reply = "";
+  let replyRow = null;
 
   try {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, persona, humor, history }),
+      signal: activeController.signal,
     });
     if (!response.ok) {
       const data = await response.json();
@@ -295,11 +324,10 @@ async function sendMessage(text) {
     }
 
     typing.remove();
-    const replyRow = addMessage("model", "");
+    replyRow = addMessage("model", "");
     const replyBubble = replyRow.querySelector(".message-bubble");
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let reply = "";
 
     while (true) {
       const { value, done } = await reader.read();
@@ -312,19 +340,45 @@ async function sendMessage(text) {
     if (!reply.trim()) throw new Error("Gemini returned an empty response.");
     history.push({ role: "user", text: message }, { role: "model", text: reply });
     saveState();
+    renderMessages();
   } catch (error) {
     typing.remove();
-    addMessage("model", error.message, "error");
+    if (error.name === "AbortError") {
+      if (reply.trim()) {
+        history.push({ role: "user", text: message }, { role: "model", text: reply });
+        saveState();
+        renderMessages();
+      } else {
+        replyRow?.remove();
+      }
+    } else {
+      replyRow?.remove();
+      addMessage("model", error.message, "error");
+    }
   } finally {
+    activeController = null;
     sendButton.disabled = false;
+    stopButton.hidden = true;
     input.focus();
   }
+}
+
+function regenerateResponse(messageIndex) {
+  if (sendButton.disabled || history[messageIndex]?.role !== "model") return;
+  const userIndex = messageIndex - 1;
+  const userMessage = history[userIndex];
+  if (!userMessage || userMessage.role !== "user") return;
+  history = history.slice(0, userIndex);
+  renderMessages();
+  saveState();
+  sendMessage(userMessage.text, { renderUser: true });
 }
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   sendMessage(input.value);
 });
+stopButton.addEventListener("click", () => activeController?.abort());
 
 input.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
