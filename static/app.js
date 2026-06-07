@@ -16,12 +16,88 @@ const personaNames = {
   creative: "Creative Partner",
 };
 
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[character]);
+}
+
+function renderInlineMarkdown(value) {
+  return value
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function renderMarkdown(value) {
+  const codeBlocks = [];
+  const escaped = escapeHtml(value).replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, (_, language, code) => {
+    const token = `%%CODEBLOCK${codeBlocks.length}%%`;
+    codeBlocks.push(`<pre><code data-language="${language || "text"}">${code.trim()}</code></pre>`);
+    return token;
+  });
+
+  const lines = escaped.split("\n");
+  const output = [];
+  let listType = null;
+
+  function closeList() {
+    if (listType) output.push(`</${listType}>`);
+    listType = null;
+  }
+
+  lines.forEach((line) => {
+    if (/^%%CODEBLOCK\d+%%$/.test(line.trim())) {
+      closeList();
+      output.push(line.trim());
+      return;
+    }
+
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      closeList();
+      const level = heading[1].length + 2;
+      output.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      return;
+    }
+
+    const unordered = line.match(/^\s*[-*]\s+(.+)$/);
+    const ordered = line.match(/^\s*\d+\.\s+(.+)$/);
+    if (unordered || ordered) {
+      const nextType = unordered ? "ul" : "ol";
+      if (listType !== nextType) {
+        closeList();
+        output.push(`<${nextType}>`);
+        listType = nextType;
+      }
+      output.push(`<li>${renderInlineMarkdown((unordered || ordered)[1])}</li>`);
+      return;
+    }
+
+    closeList();
+    if (line.trim()) output.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  });
+
+  closeList();
+  return output.join("").replace(/%%CODEBLOCK(\d+)%%/g, (_, index) => codeBlocks[Number(index)]);
+}
+
 function addMessage(role, text, extraClass = "") {
   const row = document.createElement("div");
   row.className = `message ${role} ${extraClass}`.trim();
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
-  bubble.textContent = text;
+  if (role === "model" && extraClass !== "error") {
+    bubble.classList.add("markdown");
+    bubble.innerHTML = renderMarkdown(text);
+  } else {
+    bubble.textContent = text;
+  }
   row.appendChild(bubble);
   messages.appendChild(row);
   row.scrollIntoView({ behavior: "smooth", block: "end" });

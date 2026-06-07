@@ -16,6 +16,7 @@ def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"Delta Chat" in response.data
+    assert b"static/app.js" in response.data
 
 
 def test_health_check(client):
