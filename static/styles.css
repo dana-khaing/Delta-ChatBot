@@ -98,6 +98,16 @@ button { cursor: pointer; }
 .persona strong, .persona small { display: block; }
 .persona strong { font-size: 13px; }
 .persona small { margin-top: 2px; color: #8f96ae; font-size: 11px; }
+.conversation-group { margin-top: 28px; }
+.conversation-list { display: grid; gap: 4px; max-height: 230px; overflow-y: auto; }
+.saved-conversation { display: flex; align-items: center; gap: 4px; border-radius: 8px; }
+.saved-conversation:hover, .saved-conversation.active { background: var(--navy-soft); }
+.conversation-open { min-width: 0; flex: 1; overflow: hidden; padding: 8px 5px 8px 10px; border: 0; color: #aeb4c9; background: transparent; font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.saved-conversation.active .conversation-open { color: #fff; }
+.conversation-actions { display: none; gap: 1px; padding-right: 5px; }
+.saved-conversation:hover .conversation-actions, .saved-conversation.active .conversation-actions { display: flex; }
+.conversation-actions button { width: 22px; height: 22px; border: 0; border-radius: 5px; color: #aeb4c9; background: transparent; font-size: 12px; }
+.conversation-actions button:hover { color: #fff; background: #282d49; }
 .privacy-note { margin: 0 8px; color: #858ca4; font-size: 11px; line-height: 1.55; }
 
 .chat-panel { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; min-width: 0; }
