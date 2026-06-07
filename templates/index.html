@@ -37,6 +37,10 @@
               <span><strong>Creative Partner</strong><small>Explore fresh directions</small></span>
             </button>
           </div>
+          <div class="conversation-group">
+            <p class="section-label">Conversations</p>
+            <div class="conversation-list" id="conversation-list"></div>
+          </div>
         </div>
         <p class="privacy-note">Your API key stays on the Python server and is never sent to this browser.</p>
       </aside>
@@ -48,7 +52,17 @@
             <strong id="active-persona">Class Clown</strong>
             <span class="status"><i></i> Ready with {{ model }}</span>
           </div>
-          <button class="clear-button" id="clear-button" type="button">Clear chat</button>
+          <div class="topbar-actions">
+            <label class="humor-control">
+              <span>Humor</span>
+              <select id="humor-level">
+                <option value="serious">Serious</option>
+                <option value="funny" selected>Funny</option>
+                <option value="maximum">Maximum Clown</option>
+              </select>
+            </label>
+            <button class="clear-button" id="clear-button" type="button">Clear chat</button>
+          </div>
         </header>
 
         <section class="conversation" id="conversation" aria-live="polite">
@@ -73,7 +87,11 @@
 
         <form class="composer" id="chat-form">
           <label class="sr-only" for="message-input">Message Delta Chat</label>
-          <textarea id="message-input" rows="1" maxlength="4000" placeholder="Message Delta Chat..." required></textarea>
+          <input id="file-input" type="file" accept="image/*,.pdf,.txt,.md" multiple hidden>
+          <div class="attachment-preview" id="attachment-preview"></div>
+          <button class="attach-button" id="attach-button" type="button" aria-label="Attach images or documents">+</button>
+          <textarea id="message-input" rows="1" maxlength="4000" placeholder="Message Delta Chat..."></textarea>
+          <button class="stop-button" id="stop-button" type="button" aria-label="Stop response" hidden>■</button>
           <button class="send-button" id="send-button" type="submit" aria-label="Send message">↑</button>
           <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
         </form>
