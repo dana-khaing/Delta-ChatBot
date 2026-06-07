@@ -6,6 +6,7 @@ const sendButton = document.querySelector("#send-button");
 const activePersona = document.querySelector("#active-persona");
 const sidebar = document.querySelector("#sidebar");
 const scrim = document.querySelector("#scrim");
+const STORAGE_KEY = "delta-chat-state-v1";
 
 let persona = "guide";
 let history = [];
@@ -15,6 +16,21 @@ const personaNames = {
   python: "Python Tutor",
   creative: "Creative Partner",
 };
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ persona, history }));
+}
+
+function restoreState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!saved || !Array.isArray(saved.history) || !personaNames[saved.persona]) return;
+    persona = saved.persona;
+    history = saved.history.filter((item) => item && ["user", "model"].includes(item.role) && typeof item.text === "string");
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
 
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, (character) => ({
@@ -115,6 +131,7 @@ function addTyping() {
 
 function resetChat() {
   history = [];
+  localStorage.removeItem(STORAGE_KEY);
   messages.replaceChildren();
   welcome.hidden = false;
   input.value = "";
@@ -143,6 +160,7 @@ async function sendMessage(text) {
     if (!response.ok) throw new Error(data.error || "The request failed.");
     addMessage("model", data.reply);
     history.push({ role: "user", text: message }, { role: "model", text: data.reply });
+    saveState();
   } catch (error) {
     typing.remove();
     addMessage("model", error.message, "error");
@@ -180,6 +198,7 @@ document.querySelectorAll("[data-persona]").forEach((button) => {
     button.classList.add("active");
     activePersona.textContent = personaNames[persona];
     resetChat();
+    saveState();
     sidebar.classList.remove("open");
     scrim.classList.remove("show");
   });
@@ -195,3 +214,13 @@ scrim.addEventListener("click", () => {
   sidebar.classList.remove("open");
   scrim.classList.remove("show");
 });
+
+restoreState();
+document.querySelectorAll("[data-persona]").forEach((button) => {
+  button.classList.toggle("active", button.dataset.persona === persona);
+});
+activePersona.textContent = personaNames[persona];
+if (history.length) {
+  welcome.hidden = true;
+  history.forEach((item) => addMessage(item.role, item.text));
+}
