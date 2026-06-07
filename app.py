@@ -42,6 +42,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def index():
         return render_template("index.html", model=app.config["GEMINI_MODEL"])
 
+    @app.get("/healthz")
+    def health_check():
+        return jsonify({"status": "ok", "service": "delta-chat"})
+
     @app.post("/api/chat")
     def chat():
         payload = request.get_json(silent=True) or {}
