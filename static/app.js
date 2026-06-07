@@ -218,7 +218,7 @@ function addTyping() {
 
 function renderMessages() {
   messages.replaceChildren();
-  welcome.hidden = !history.length;
+  welcome.hidden = Boolean(history.length);
   history.forEach((item, index) => addMessage(item.role, item.text, "", index));
 }
 
