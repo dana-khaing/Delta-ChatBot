@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A focused Gemini-powered chatbot built with Python.">
+    <title>Delta Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div>
+          <a class="brand" href="/" aria-label="Delta Chat home">
+            <span class="brand-mark">Δ</span>
+            <span>Delta Chat</span>
+          </a>
+          <button class="new-chat" id="new-chat" type="button">
+            <span aria-hidden="true">+</span>
+            New conversation
+          </button>
+          <div class="persona-group">
+            <p class="section-label">Choose a persona</p>
+            <button class="persona active" data-persona="guide" type="button">
+              <span class="persona-icon">D</span>
+              <span><strong>Helpful Guide</strong><small>Clear, practical answers</small></span>
+            </button>
+            <button class="persona" data-persona="python" type="button">
+              <span class="persona-icon">&lt;/&gt;</span>
+              <span><strong>Python Tutor</strong><small>Learn through examples</small></span>
+            </button>
+            <button class="persona" data-persona="creative" type="button">
+              <span class="persona-icon">✦</span>
+              <span><strong>Creative Partner</strong><small>Explore fresh directions</small></span>
+            </button>
+          </div>
+        </div>
+        <p class="privacy-note">Your API key stays on the Python server and is never sent to this browser.</p>
+      </aside>
+
+      <main class="chat-panel">
+        <header class="topbar">
+          <button class="menu-button" id="menu-button" type="button" aria-label="Open menu">☰</button>
+          <div>
+            <strong id="active-persona">Helpful Guide</strong>
+            <span class="status"><i></i> Ready with {{ model }}</span>
+          </div>
+          <button class="clear-button" id="clear-button" type="button">Clear chat</button>
+        </header>
+
+        <section class="conversation" id="conversation" aria-live="polite">
+          <div class="welcome" id="welcome">
+            <div class="welcome-mark">Δ</div>
+            <h1>What can we figure out together?</h1>
+            <p>Ask a question, learn some Python, or turn a rough idea into a clear plan.</p>
+            <div class="suggestions">
+              <button type="button" data-prompt="Explain Python decorators with a simple example.">
+                Explain Python decorators
+              </button>
+              <button type="button" data-prompt="Help me plan a small portfolio project I can finish this weekend.">
+                Plan a weekend project
+              </button>
+              <button type="button" data-prompt="Turn my rough app idea into a concise feature list.">
+                Shape an app idea
+              </button>
+            </div>
+          </div>
+          <div class="messages" id="messages"></div>
+        </section>
+
+        <form class="composer" id="chat-form">
+          <label class="sr-only" for="message-input">Message Delta Chat</label>
+          <textarea id="message-input" rows="1" maxlength="4000" placeholder="Message Delta Chat..." required></textarea>
+          <button class="send-button" id="send-button" type="submit" aria-label="Send message">↑</button>
+          <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
+        </form>
+      </main>
+    </div>
+    <div class="scrim" id="scrim"></div>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </body>
+</html>
+
