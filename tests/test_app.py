@@ -65,3 +65,21 @@ def test_chat_reports_missing_api_key():
     app = create_app({"TESTING": True, "GEMINI_API_KEY": ""})
     response = app.test_client().post("/api/chat", json={"message": "Hello"})
     assert response.status_code == 503
+
+
+def test_chat_stream_returns_incremental_reply(client):
+    mock_client = MagicMock()
+    mock_client.models.generate_content_stream.return_value = [
+        SimpleNamespace(text="Hello "),
+        SimpleNamespace(text="from Gemini"),
+    ]
+
+    with patch("app.genai.Client", return_value=mock_client):
+        response = client.post(
+            "/api/chat/stream",
+            json={"message": "Hello", "persona": "guide", "history": []},
+        )
+
+    assert response.status_code == 200
+    assert response.text == "Hello from Gemini"
+    assert response.headers["Cache-Control"] == "no-cache"
