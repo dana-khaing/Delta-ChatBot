@@ -1,6 +1,6 @@
 <div align="center">
 
-![Header](https://capsule-render.vercel.app/api?type=waving&color=0:101427,45:342c72,100:6755e7&height=220&section=header&text=Delta%20Chat&fontSize=48&fontColor=ffffff&fontAlignY=38&desc=A%20Focused%20Gemini-Powered%20Chatbot&descAlignY=58&descColor=d8d3ff&animation=fadeIn)
+![Header](https://capsule-render.vercel.app/api?type=waving&color=0:101427,45:342c72,100:6755e7&height=220&section=header&text=Delta%20Chat&fontSize=48&fontColor=ffffff&fontAlignY=38&desc=An%20AI-Focused%20Gemini-Powered%20Chatbot&descAlignY=58&descColor=d8d3ff&animation=fadeIn)
 
 [![Status](https://img.shields.io/badge/Status-Development-342c72?style=for-the-badge)](https://github.com/dana-khaing/Delta-ChatBot)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-101427?style=for-the-badge&logo=python&logoColor=d8d3ff)](https://www.python.org/)
@@ -15,7 +15,7 @@
 
 ## About Delta Chat
 
-Delta Chat is a focused browser-based AI assistant powered by Google's Gemini
+Delta Chat is an AI-focused browser-based assistant powered by Google's Gemini
 API. It combines a lightweight Python and Flask backend with a responsive chat
 interface, configurable assistant personas, and multi-turn conversation
 history.
