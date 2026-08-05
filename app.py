@@ -176,41 +176,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.post("/api/chat/stream")
     def stream_chat():
         payload = request.get_json(silent=True) or {}
-        message = str(payload.get("message", "")).strip()
-        persona = str(payload.get("persona", "guide"))
-        humor = str(payload.get("humor", "funny"))
-        raw_history = payload.get("history", [])
-        raw_attachments = payload.get("attachments", [])
-
-        if not message and not raw_attachments:
-            return jsonify({"error": "Please enter a message."}), 400
-        if persona not in PERSONAS:
-            return jsonify({"error": "Unknown assistant persona."}), 400
-        if humor not in HUMOR_LEVELS:
-            return jsonify({"error": "Unknown humor level."}), 400
-        if not isinstance(raw_history, list):
-            return jsonify({"error": "Conversation history must be a list."}), 400
-        if not app.config["GEMINI_API_KEY"]:
-            return jsonify(
-                {"error": "GEMINI_API_KEY is not configured on the server."}
-            ), 503
         try:
-            files = attachment_parts(raw_attachments)
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        history = []
-        for item in raw_history[-app.config["MAX_HISTORY_MESSAGES"] :]:
-            if not isinstance(item, dict):
-                continue
-            role = item.get("role")
-            text = str(item.get("text", "")).strip()
-            if role in {"user", "model"} and text:
-                history.append(
-                    types.Content(role=role, parts=[types.Part.from_text(text=text)])
-                )
-        user_parts = [types.Part.from_text(text=message or "Analyze the attached files.")]
-        history.append(types.Content(role="user", parts=user_parts + files))
+            persona, humor, history = parse_chat_request(app, payload)
+        except ChatRequestError as exc:
+            return jsonify({"error": exc.message}), exc.status
 
         try:
             client = genai.Client(api_key=app.config["GEMINI_API_KEY"])
