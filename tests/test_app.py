@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app import create_app
+from app import STREAM_ERROR_MARKER, create_app
 
 
 @pytest.fixture()
@@ -94,6 +94,25 @@ def test_chat_stream_returns_incremental_reply(client):
     assert response.status_code == 200
     assert response.text == "Hello from Gemini"
     assert response.headers["Cache-Control"] == "no-cache"
+
+
+def test_chat_stream_appends_marker_on_mid_stream_failure(client):
+    mock_client = MagicMock()
+
+    def failing_stream():
+        yield SimpleNamespace(text="Partial reply ")
+        raise RuntimeError("boom")
+
+    mock_client.models.generate_content_stream.return_value = failing_stream()
+
+    with patch("app.genai.Client", return_value=mock_client):
+        response = client.post(
+            "/api/chat/stream",
+            json={"message": "Hello", "persona": "guide", "history": []},
+        )
+
+    assert response.status_code == 200
+    assert response.text == f"Partial reply {STREAM_ERROR_MARKER}"
 
 
 def test_chat_accepts_image_attachment(client):
