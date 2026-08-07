@@ -14,6 +14,8 @@ const humorSelect = document.querySelector("#humor-level");
 const conversationList = document.querySelector("#conversation-list");
 const STORAGE_KEY = "delta-chat-conversations-v2";
 const LEGACY_STORAGE_KEY = "delta-chat-state-v1";
+// Must match STREAM_ERROR_MARKER in app.py.
+const STREAM_ERROR_MARKER = "\n\n%%DELTA_STREAM_ERROR%%";
 
 let persona = "guide";
 let humor = "funny";
@@ -381,14 +383,22 @@ async function sendMessage(text, options = {}) {
       const { value, done } = await reader.read();
       if (done) break;
       reply += decoder.decode(value, { stream: true });
-      replyBubble.innerHTML = renderMarkdown(reply);
+      const markerIndex = reply.indexOf(STREAM_ERROR_MARKER);
+      replyBubble.innerHTML = renderMarkdown(markerIndex === -1 ? reply : reply.slice(0, markerIndex));
       replyRow.scrollIntoView({ behavior: "smooth", block: "end" });
     }
 
-    if (!reply.trim()) throw new Error("Gemini returned an empty response.");
+    const streamFailed = reply.includes(STREAM_ERROR_MARKER);
+    if (streamFailed) reply = reply.slice(0, reply.indexOf(STREAM_ERROR_MARKER));
+    if (!reply.trim()) {
+      throw new Error(streamFailed ? "Gemini request failed while streaming." : "Gemini returned an empty response.");
+    }
     history.push({ role: "user", text: displayMessage }, { role: "model", text: reply });
     saveState();
     renderMessages();
+    if (streamFailed) {
+      addMessage("model", "The response was interrupted by a server error. You can try again.", "error");
+    }
   } catch (error) {
     typing.remove();
     if (error.name === "AbortError") {
