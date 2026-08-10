@@ -133,3 +133,35 @@ def test_chat_rejects_unsupported_attachment(client):
     )
     assert response.status_code == 400
     assert response.json["error"] == "Unsupported attachment type."
+
+
+def test_chat_rejects_too_many_attachments(client):
+    attachment = {
+        "mime_type": "text/plain",
+        "data": base64.b64encode(b"note").decode(),
+    }
+    response = client.post(
+        "/api/chat",
+        json={"attachments": [attachment, attachment, attachment]},
+    )
+    assert response.status_code == 400
+    assert response.json["error"] == "Attach up to 2 files."
+
+
+def test_chat_rejects_oversized_attachment(client):
+    oversized = base64.b64encode(b"x" * (5 * 1024 * 1024 + 1)).decode()
+    response = client.post(
+        "/api/chat",
+        json={"attachments": [{"mime_type": "text/plain", "data": oversized}]},
+    )
+    assert response.status_code == 400
+    assert response.json["error"] == "Each attachment must be 5 MB or smaller."
+
+
+def test_chat_rejects_invalid_attachment_data(client):
+    response = client.post(
+        "/api/chat",
+        json={"attachments": [{"mime_type": "text/plain", "data": "not-valid-base64!!"}]},
+    )
+    assert response.status_code == 400
+    assert response.json["error"] == "Invalid attachment data."
