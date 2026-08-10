@@ -48,6 +48,12 @@ ALLOWED_ATTACHMENT_TYPES = {
 MAX_ATTACHMENTS = 2
 MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 
+# In-band sentinel appended to a /api/chat/stream response body when the
+# Gemini stream fails partway through, so the client can tell a truncated
+# reply apart from a complete one. Must match STREAM_ERROR_MARKER in
+# static/app.js.
+STREAM_ERROR_MARKER = "\n\n%%DELTA_STREAM_ERROR%%"
+
 
 def system_instruction(persona: str, humor: str) -> str:
     return f"{PERSONAS[persona]} Humor setting: {HUMOR_LEVELS[humor]}"
@@ -202,6 +208,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                         yield chunk.text
             except Exception:
                 app.logger.exception("Gemini stream failed")
+                yield STREAM_ERROR_MARKER
 
         return Response(
             stream_with_context(generate()),
